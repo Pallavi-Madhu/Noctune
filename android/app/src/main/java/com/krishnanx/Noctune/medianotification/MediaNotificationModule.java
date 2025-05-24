@@ -74,6 +74,10 @@ public class MediaNotificationModule extends ReactContextBaseJavaModule {
     private String currentAlbum = "";
     private String currentArtwork = "";
 
+    //Prrogress bar update
+    private long currentDurationMs = 0L;
+    private long currentPositionMs = 0L;
+
     public MediaNotificationModule(ReactApplicationContext reactContext) {
         super(reactContext);
         notificationManager = NotificationManagerCompat.from(reactContext);
@@ -113,6 +117,9 @@ public class MediaNotificationModule extends ReactContextBaseJavaModule {
 
     private void initializeMediaSession() {
         mediaSession = new MediaSessionCompat(getReactApplicationContext(), "MediaNotificationSession");
+
+        long currentPosition = 0L /* your actual current position in ms */;
+        float playbackSpeed = 1.0f; // Normal speed
         
         stateBuilder = new PlaybackStateCompat.Builder()
             .setActions(
@@ -120,8 +127,14 @@ public class MediaNotificationModule extends ReactContextBaseJavaModule {
                 PlaybackStateCompat.ACTION_PAUSE |
                 PlaybackStateCompat.ACTION_SKIP_TO_NEXT |
                 PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS |
-                PlaybackStateCompat.ACTION_STOP
-            );
+                PlaybackStateCompat.ACTION_STOP |
+                PlaybackStateCompat.ACTION_SEEK_TO
+            )
+            .setState(
+        PlaybackStateCompat.STATE_PLAYING, // or STATE_PAUSED depending on actual state
+        currentPosition,
+        playbackSpeed
+    );
             
         mediaSession.setPlaybackState(stateBuilder.build());
         // Ensure this is being called on a background thread, if necessary:
@@ -133,6 +146,40 @@ mainHandler.post(() -> {
 
        
         mediaSession.setActive(true);
+    }
+
+    @ReactMethod
+    public void updatePlaybackPosition(double positionMs) {
+        this.currentPositionMs = (long) positionMs;
+
+        if (mediaSession != null) {
+            int playbackState = isPlaying?
+            PlaybackStateCompat.STATE_PLAYING:
+            PlaybackStateCompat.STATE_PAUSED;
+            stateBuilder.setState(
+                playbackState,
+                //PlaybackStateCompat.STATE_PLAYING, // or use STATE_PAUSED based on real state
+                currentPositionMs,
+                isPlaying? 1.0f: 0.0f // playback speed
+            );
+            mediaSession.setPlaybackState(stateBuilder.build());
+        }
+    }
+
+    public void setTrackDuration(double durationMs, Promise promise) {
+        try{
+            this.currentDurationMs = (long) durationMs;
+            // Update metadata with duration
+            if(isNotificationActive){
+                updateNotification(isPlaying);
+            }
+            
+            promise.resolve(true);
+    } catch (Exception e) {
+        promise.reject("ERROR", "Failed to set track duration: " + e.getMessage());
+    }
+
+        
     }
 
     private void registerNotificationReceiver() {
@@ -229,7 +276,8 @@ mainHandler.post(() -> {
         MediaMetadataCompat.Builder metadataBuilder = new MediaMetadataCompat.Builder()
             .putString(MediaMetadataCompat.METADATA_KEY_TITLE, currentTitle)
             .putString(MediaMetadataCompat.METADATA_KEY_ARTIST, currentArtist)
-            .putString(MediaMetadataCompat.METADATA_KEY_ALBUM, currentAlbum);
+            .putString(MediaMetadataCompat.METADATA_KEY_ALBUM, currentAlbum)
+            .putLong(MediaMetadataCompat.METADATA_KEY_DURATION, currentDurationMs);
         
         // Load artwork if available
         if (currentArtwork != null && !currentArtwork.isEmpty()) {
@@ -262,7 +310,7 @@ mainHandler.post(() -> {
             PlaybackStateCompat.STATE_PLAYING : 
             PlaybackStateCompat.STATE_PAUSED;
             
-        stateBuilder.setState(playbackState, PlaybackStateCompat.PLAYBACK_POSITION_UNKNOWN, 1.0f);
+        stateBuilder.setState(playbackState, currentPositionMs, isPlaying ? 1.0f : 0.0f);
         mediaSession.setPlaybackState(stateBuilder.build());
     }
     

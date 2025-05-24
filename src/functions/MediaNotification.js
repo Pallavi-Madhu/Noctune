@@ -57,6 +57,33 @@ class MediaNotificationManager {
   }
 
   /**
+   * Update the playback position in the native media session
+   * @param {number} positionMs - Current playback position in milliseconds
+   * @returns {Promise<boolean>}
+   */
+  updatePlaybackPosition(positionMs) {
+    if (!this.isAvailable) {
+      console.warn("MediaNotification is not available on this platform");
+      return Promise.resolve(false);
+    }
+
+    return MediaNotification.updatePlaybackPosition(positionMs);
+  }
+
+  /**
+   * Set the track duration for progress bar calculation
+   * @param {number} durationMs - Total track duration in milliseconds
+   * @returns {Promise<boolean>}
+   */
+  setTrackDuration(durationMs) {
+    if (!this.isAvailable) {
+      console.warn("MediaNotification is not available on this platform");
+      return Promise.resolve(false);
+    }
+    return MediaNotification.setTrackDuration(durationMs);
+  }
+
+  /**
    * Show the media playback notification
    * @param {Object} trackData - Object containing track information
    * @param {string} trackData.title - Title of the track

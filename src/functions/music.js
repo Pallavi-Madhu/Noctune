@@ -4,6 +4,7 @@ import Constants from "expo-constants";
 import { progress } from "../../Store/MusicSlice.js";
 import { useDispatch } from "react-redux";
 import { setIsPlaying, load, changePos } from "../../Store/MusicSlice.js";
+import MediaNotificationManager from "../functions/MediaNotification";
 export const soundRef = {
   current: null,
 };
@@ -53,14 +54,17 @@ export const loadAudio = async (
     const { sound } = await Audio.Sound.createAsync(
       { uri: audioUri },
       { shouldPlay: false, progressUpdateIntervalMillis: 1060 },
-      onPlaybackStatusUpdate
+      onPlaybackStatusUpdate  //commented out
     );
-
-
-
+    
     soundRef.current = sound;
+    if (data[pos].duration){
+      MediaNotificationManager.setTrackDuration(data[pos].duration * 1000);
+      
+   
     sound.setOnPlaybackStatusUpdate((status) => {
       onPlaybackStatusUpdate(status, dispatch, getSeek, data, pos);
+      
     });
 
     console.warn("Audio Loaded", soundRef.current);
@@ -68,7 +72,9 @@ export const loadAudio = async (
       await soundRef.current.playAsync();
       dispatch(setIsPlaying(true));
     }
-  } catch (error) {
+  } 
+}
+  catch (error) {
     console.error("Error loading audio:", error);
 
   }
@@ -81,10 +87,15 @@ export const unloadAudio = async () => {
   }
 };
 const onPlaybackStatusUpdate = (status, dispatch, getSeek, data, pos) => {
-  if (status.isLoaded) {
+  if (status.isLoaded && pos && data[pos]) {
     console.warn("hi?");
     console.warn("positionMillis:", status.positionMillis / 1000);
+    console.warn("Position update:", status.positionMillis, "Duration:", data[pos].duration);
+
+    MediaNotificationManager.updatePlaybackPosition(status.positionMillis);
+
     if (status.isPlaying) {
+      
       dispatch(progress(+1));
     }
 
@@ -115,3 +126,4 @@ const tailFill = async (currentSec, dispatch) => {
   unloadAudio();
   return; // if you want to free the sound
 };
+

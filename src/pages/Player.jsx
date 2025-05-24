@@ -61,6 +61,17 @@ const Player = () => {
 
   //const mediaListenersInitialized = useRef(false);
 
+  // useEffect(() => {
+  //   const updateProgress = async () => {
+  //     if (status?.isLoaded && status?.positionMillis != null) {
+  //       await MediaNotification.updatePlaybackPosition(status.positionMillis);
+  //     }
+  //   };
+
+  //   const interval = setInterval(updateProgress, 1000); // call every second
+  //   return () => clearInterval(interval);
+  // }, [status]);
+
   useEffect(() => {
     if (currentTrack) {
       console.warn("Track changed, resetting notification state");
